@@ -11,6 +11,7 @@ def validate_input(file_path: str) -> str:
         str: Тип SMILES или папка с xyz
 
     """
+    # popka durak
     pass
 
 
