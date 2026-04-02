@@ -1,0 +1,120 @@
+
+def cluster_conformers(data, metric="euclidean", method="dbscan", align=False, use_maxmin=False, n_select=None, **kwargs):
+    """
+    Кластеризация конформеров с поддержкой:
+    - RMSD (с Kabsch)
+    - DBSCAN / Agglo / HDBSCAN
+    - MaxMin (qc-selector)
+    Параметры:
+    ----------
+    data:
+    descriptors (n_samples, n_features)
+    или conformers (list of (n_atoms, 3))
+    metric:
+    'euclidean' | 'rmsd'
+    method:
+    'dbscan' | 'agglo' | 'hdbscan'
+    align:
+    использовать Kabsch (для RMSD)
+    use_maxmin:
+    применить MaxMin selection
+    n_select:
+    сколько конформеров выбрать (для MaxMin)
+    kwargs:
+    параметры кластеризации
+    Возвращает:
+    ----------
+    labels, distance_matrix, selected_indices
+    """
+    import numpy as np
+    from sklearn.cluster import DBSCAN, AgglomerativeClustering
+    from sklearn.metrics import pairwise_distances
+
+    # =========================
+    # 1. Kabsch alignment
+    # =========================
+    def kabsch(A, B):
+        A_cent = A - A.mean(axis=0)
+        B_cent = B - B.mean(axis=0)
+
+        H = A_cent.T @ B_cent
+        U, S, Vt = np.linalg.svd(H)
+
+        R = Vt.T @ U.T
+
+        # коррекция отражения
+        if np.linalg.det(R) < 0:
+            Vt[-1, :] *= -1
+            R = Vt.T @ U.T
+
+        A_aligned = A_cent @ R
+        return A_aligned, B_cent
+
+    def rmsd(A, B):
+        if align:
+            A, B = kabsch(A, B)
+        else:
+            A = A - A.mean(axis=0)
+            B = B - B.mean(axis=0)
+
+        return np.sqrt(((A - B) ** 2).mean())
+
+    def rmsd_matrix(conformers):
+        n = len(conformers)
+        dist = np.zeros((n, n))
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                d = rmsd(conformers[i], conformers[j])
+                dist[i, j] = dist[j, i] = d
+
+        return dist
+
+    # =========================
+    # 2. Distance matrix
+    # =========================
+    if metric == "rmsd":
+        distance_matrix = rmsd_matrix(data)
+    else:
+        distance_matrix = pairwise_distances(data, metric=metric)
+
+    # =========================
+    # 3. MaxMin selection
+    # =========================
+    selected_indices = None
+
+    if use_maxmin:
+        try:
+            from qcselector.methods import MaxMin
+        except ImportError:
+            raise ImportError("Install qc-selector for MaxMin")
+
+        if n_select is None:
+            raise ValueError("n_select must be specified for MaxMin")
+
+        selector = MaxMin()
+        selected_indices = selector.select_from_distance_matrix(distance_matrix, size=n_select)
+
+    # =========================
+    # 4. Clustering
+    # =========================
+    if method == "dbscan":
+        model = DBSCAN(metric="precomputed", **kwargs)
+
+    elif method == "agglo":
+        model = AgglomerativeClustering(metric="precomputed", linkage="average", **kwargs)
+
+    elif method == "hdbscan":
+        try:
+            import hdbscan
+        except ImportError:
+            raise ImportError("Install hdbscan")
+
+        model = hdbscan.HDBSCAN(metric="precomputed", **kwargs)
+
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    labels = model.fit_predict(distance_matrix)
+
+    return labels, distance_matrix, selected_indices
