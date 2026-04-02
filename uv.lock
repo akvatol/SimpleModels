@@ -1960,6 +1960,7 @@ dependencies = [
     { name = "minimahopping" },
     { name = "orb-models" },
     { name = "pandas" },
+    { name = "pyyaml" },
     { name = "scikit-learn" },
     { name = "seaborn" },
 ]
@@ -1980,6 +1981,7 @@ requires-dist = [
     { name = "minimahopping", git = "https://gitlab.com/goedeckergroup/ase_mh.git" },
     { name = "orb-models", specifier = ">=0.6.2" },
     { name = "pandas", specifier = ">=3.0.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
 ]
