@@ -12,7 +12,30 @@ def validate_input(file_path: str) -> str:
         str: Тип SMILES или папка с xyz
 
     """
-    pass
+    import os
+    # ПРОВЕРКА НА НАЛИЧИЕ ТОГО filepath который нам нужен
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Такого пути не существует, проверьте возможно он задан неверно: {file_path}")
+    
+    # ПРОВЕРКА НА ТО, ЧТО ЭТО ИМЕННО ФАЙЛ ТИПА SMILES, ЧТОБЫ СЛУЧАЙНО НЕ ЦЕПАНУТЬ ЛИШНЕГО
+    if os.path.isfile(file_path):
+        if file_path.endswith(('.smi', '.txt', '.smiles')): # ТУТ ДОБАВЛЯЕМ ПРОВЕРКУ НА txt и smi СООТВЕТСТВЕННО, ТАК КАК ЭТИ ФОРМАТЫ В ЦЕЛОМ РОДСТВЕННЫЕ, НО ЭТО МОЖНО УБРАТЬ ПОТОМ
+            return print("Данный файл относится к SMILES")
+        else:
+            raise ValueError(f"Файл с неподдерживаемым расширением, ожидалось расширение типа: .smi, .txt или .smiles: {file_path}")
+    # ПРОВЕРКА НА СУЩЕСТВОВАНИЕ ДИРЕКТОРИИ 
+    elif os.path.isdir(file_path):
+        # ПРОВЕРИМ ЕСТЬ ЛИ В ДАННОЙ ДИРЕКТОРИИ xyz-файлы
+        list_of_xyz_files = [f for f in os.listdir(file_path) if f.endswith('.xyz')] # ЭТОТ ГЕНЕРАТОР СПИСКА БУДЕТ ЦЕПЛЯТЬ XYZ-ФАЙЛЫ ИЗ ДИРЕКТОРИИ И ДОБАВЛЯТЬ ИХ В СПИСОК
+        if list_of_xyz_files:
+            return "xyz_folder"
+        else:
+            raise ValueError(f"Данная директория не содержит каких-либо фалов типа .xyz: {file_path}")
+    
+    # В СЛУЧАЕ ЕСЛИ ОТСУТСТВУЕТ И ФАЙЛ И ДИРЕКТОРИЯ
+    else:
+         raise ValueError(f"Не обнаружено ни подобной директории, ни файлов: {file_path}")
+        
 
 
 # XXX
