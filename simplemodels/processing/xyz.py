@@ -6,23 +6,38 @@ from ase.io import read
 def process_xyz(file_path: str) -> list:
     """*.xyz parsing."""
     path = Path(file_path)
-    files = path.glob("*.xyz")
+    if path.is_file():
+        files = [path] if path.suffix.lower() == ".xyz" else []
+    elif path.is_dir():
+        files = sorted(path.glob("*.xyz"))
+    else:
+        files = []
+
     data = []
     names = []
     for molecule_file in files:
         atoms = read(molecule_file, format="xyz")
         with open(molecule_file, "r", encoding="utf-8") as fr:
             xyz = fr.readlines()
+
+        charge, mult = 0, 1
         try:
-            charge, mult = int(xyz[1].split()[0]), int(xyz[1].split()[1])
-        # TODO: add proper error handling
-        except:  # noqa: E722
+            if len(xyz) > 1:
+                header_parts = xyz[1].split()
+                if len(header_parts) >= 2:
+                    charge = int(header_parts[0])
+                    mult = int(header_parts[1])
+        except (TypeError, ValueError):
             charge, mult = 0, 1
-        finally:
-            atoms.info["charge"] = charge  # total charge
-            atoms.info["spin"] = mult  # spin multiplicity
+
+        atoms.info["charge"] = charge  # total charge
+        atoms.info["spin"] = mult  # spin multiplicity
         data.append(atoms)
         names.append(molecule_file.stem)
+
+    if not data:
+        raise FileNotFoundError(f"No XYZ files found at: {file_path}")
+
     return data, names
 
 

@@ -11,10 +11,23 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "analyzer_type": "dscribe",  # 'dscribe'
     "optimizer_type": "dft",  # 'dft'
     "enable_optimization": False,
+    "charge": 0,
+    "multiplicity": 1,
     "num_conformers": 100,
     "output_dir": "output",
     "report_path": "report.html",
     "conformers": {},
+    "analyzer": {
+        "rmsd_threshold": 0.5,
+        "max_selected": 20,
+    },
+    "optimizer": {
+        "calculator": "orb",
+        "orb_model": "orb-v3",
+        "algorithm": "BFGS",
+        "fmax": 0.01,
+        "max_steps": 500,
+    },
 }
 
 

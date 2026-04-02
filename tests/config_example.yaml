@@ -1,4 +1,38 @@
-# Вкладка с данными о генерации конформеров
+input_format: xyz
+generator_type: minimahopping
+analyzer_type: dscribe
+optimizer_type: dft
+enable_optimization: true
+
+# Глобальные параметры системы (используются как fallback)
+charge: 0
+multiplicity: 1
+
+# Общие параметры пайплайна
+num_conformers: 30
+output_dir: output
+report_path: report.html
+
+# Параметры генерации конформеров (MinimaHopping)
 conformers:
-  method: MH # Обязательное поле, далее идут настройки
-  T: 1000
+  T0: 1000
+  mdmin: 2
+  fmax: 0.05
+  totalsteps: 30
+  output_n_lowest_minima: 30
+  dt0: 0.08
+  energy_threshold: 0.001
+  fingerprint_threshold: 0.05
+
+# Параметры анализа и отбора
+analyzer:
+  rmsd_threshold: 0.5
+  max_selected: 10
+
+# Параметры дооптимизации
+optimizer:
+  calculator: orb
+  orb_model: orb-v3
+  algorithm: BFGS
+  fmax: 0.01
+  max_steps: 300

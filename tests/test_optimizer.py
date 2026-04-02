@@ -1,17 +1,19 @@
-import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 
 # Фикстура-генератор: штампуем xyz-файлы
 @pytest.fixture
 def create_xyz_file():
+    """Create a temporary XYZ file for optimizer-related tests."""
     # Создаем папку, если ее нет
     test_dir = Path("tests/test_files")
     test_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Название берется из названия файла
     file_path = test_dir / "molecule_test.xyz"
-    
+
     # Содержимое: 8 атомов, заряд 0, мультиплетность 1
     xyz_data = """8
 0 1
@@ -27,9 +29,9 @@ H         -3.95670        0.45227       -0.66883"""
     # Заливаем данные в файл
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(xyz_data)
-        
+
     # Отдаем путь к файлу в тест
     yield str(file_path)
-    
+
     # Убираем за собой мусор после работы (раскомментируй, если надо удалять)
     # os.remove(file_path)

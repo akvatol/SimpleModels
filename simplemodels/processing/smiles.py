@@ -40,6 +40,9 @@ def process_smile(smile: str) -> ase.Atoms:  # noqa: D103
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
+    atoms.info["charge"] = charge if charge is not None else 0
+    atoms.info["spin"] = multiplicity if multiplicity is not None else 1
+
     return atoms
 
 

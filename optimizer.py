@@ -1,5 +1,6 @@
 import copy
-from typing import List, Dict
+from typing import Dict, List
+
 from ase.optimize import BFGS
 
 # Пытаемся прикрутить ORB, как просили в плане
@@ -8,9 +9,11 @@ try:
 except ImportError:
     ORBCalculator = None
 
+
 class DFTConformerOptimizer:
     @staticmethod
     def optimize_conformers(selected_conformers: List[Dict], config: Dict) -> List[Dict]:
+        """Optimize selected conformers using ORB calculator and BFGS."""
         # читает config
         opt_config = config.get("optimizer", {})
         calc_type = opt_config.get("calculator", "orb")
@@ -24,9 +27,9 @@ class DFTConformerOptimizer:
             # Берем копию файла, чтобы не сломать оригинал, если что-то пойдет не так
             new_conf = copy.deepcopy(conf)
             atoms = new_conf.get("atoms")
-            
+
             if atoms is None:
-                continue # Если файла нет, пропускаем
+                continue  # Если файла нет, пропускаем
 
             # Ставим счетчик давления (калькулятор)
             if calc_type == "orb":
@@ -44,13 +47,13 @@ class DFTConformerOptimizer:
             opt = BFGS(atoms, logfile=None)
             opt.run(fmax=fmax, steps=max_steps)
 
-            # Парсит новую геометрию и энергию, сохраняет в новый конфиг 
+            # Парсит новую геометрию и энергию, сохраняет в новый конфиг
             new_conf["atoms"] = atoms
             new_conf["energy"] = atoms.get_potential_energy()
-            
+
             optimized_conformers.append(new_conf)
 
         # Сортируем от лучшей к худшей (по энергии)
-        optimized_conformers.sort(key=lambda x: x.get("energy", float('inf')))
-        
+        optimized_conformers.sort(key=lambda x: x.get("energy", float("inf")))
+
         return optimized_conformers

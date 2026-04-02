@@ -14,6 +14,26 @@ from .utils import BaseConformerGenerator
 logger = logging.getLogger(__name__)
 
 
+def _write_xyz_header(file_path: Path, charge: int, multiplicity: int, energy: float | None = None) -> None:
+    """Rewrite XYZ comment line to preserve system state for downstream stages."""
+    if not file_path.exists():
+        return
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    if len(lines) < 2:
+        return
+
+    header = f"{charge} {multiplicity}"
+    if energy is not None:
+        header = f"{header} energy={energy:.12g}"
+    lines[1] = f"{header}\n"
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
 class MinimaHoppingConformerGenerator(BaseConformerGenerator):
     """Conformer generator based on the Minima Hopping method.
 
@@ -60,6 +80,8 @@ class MinimaHoppingConformerGenerator(BaseConformerGenerator):
         }
 
         totalsteps = conformer_config.get("totalsteps", config.get("num_conformers", 100))
+        charge = int(atoms.info.get("charge", 0))
+        multiplicity = int(atoms.info.get("spin", 1))
 
         # Minimahopping writes to output/ and minima/ in cwd, so run from a temp dir
         original_cwd = os.getcwd()
@@ -89,6 +111,13 @@ class MinimaHoppingConformerGenerator(BaseConformerGenerator):
             for i, conformer in enumerate(conformers):
                 xyz_path = conformer_dir / f"conformer_{i:04d}.xyz"
                 write(str(xyz_path), conformer, format="xyz")
+                energy = None
+                if "energy" in conformer.info:
+                    try:
+                        energy = float(conformer.info["energy"])
+                    except (TypeError, ValueError):
+                        energy = None
+                _write_xyz_header(xyz_path, charge, multiplicity, energy)
                 saved_paths.append(str(xyz_path))
 
             return saved_paths
@@ -133,6 +162,8 @@ class OpenBabelConformerGenerator(BaseConformerGenerator):
         energy_cutoff = conformer_config.get("energy_cutoff", 50.0)
         conf_cutoff = conformer_config.get("conf_cutoff", config.get("num_conformers", 100))
         forcefield = conformer_config.get("forcefield", "mmff94")
+        charge = int(atoms.info.get("charge", 0))
+        multiplicity = int(atoms.info.get("spin", 1))
 
         # Convert ASE Atoms to OpenBabel molecule via temporary XYZ file
         with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as tmp:
@@ -165,6 +196,7 @@ class OpenBabelConformerGenerator(BaseConformerGenerator):
             # Write conformer using pybel
             out_mol = pybel.Molecule(mol.OBMol)
             out_mol.write("xyz", str(xyz_path), overwrite=True)
+            _write_xyz_header(xyz_path, charge, multiplicity)
             saved_paths.append(str(xyz_path))
 
         return saved_paths
