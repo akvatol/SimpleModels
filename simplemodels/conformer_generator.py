@@ -14,7 +14,7 @@ from .utils import BaseConformerGenerator
 logger = logging.getLogger(__name__)
 
 
-class ASEConformerGenerator(BaseConformerGenerator):
+class MinimaHoppingConformerGenerator(BaseConformerGenerator):
     """Conformer generator based on the Minima Hopping method.
 
     Uses the minimahopping package with ASE calculators to explore
@@ -95,6 +95,10 @@ class ASEConformerGenerator(BaseConformerGenerator):
 
         finally:
             os.chdir(original_cwd)
+
+
+class ASEConformerGenerator(MinimaHoppingConformerGenerator):
+    """Backward-compatible alias for MinimaHoppingConformerGenerator."""
 
 
 class OpenBabelConformerGenerator(BaseConformerGenerator):

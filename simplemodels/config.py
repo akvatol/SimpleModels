@@ -7,7 +7,7 @@ import yaml
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "input_format": "smiles",  # 'smiles' or 'xyz'
-    "generator_type": "ase",  # 'ase' or 'openbabel'
+    "generator_type": "ase",  # 'minimahopping' or 'ase' (legacy alias) or 'openbabel'
     "analyzer_type": "dscribe",  # 'dscribe'
     "optimizer_type": "dft",  # 'dft'
     "enable_optimization": False,

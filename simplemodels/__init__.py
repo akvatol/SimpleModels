@@ -1,6 +1,10 @@
 from .analyzer import DScribeAnalyzer
 from .config import load_config
-from .conformer_generator import ASEConformerGenerator, OpenBabelConformerGenerator
+from .conformer_generator import (
+    ASEConformerGenerator,
+    MinimaHoppingConformerGenerator,
+    OpenBabelConformerGenerator,
+)
 from .input_handler import InputHandler
 from .main import ConformerPipeline
 from .optimizer import DFTConformerOptimizer
@@ -10,6 +14,7 @@ __all__ = [
     "ConformerPipeline",
     "load_config",
     "InputHandler",
+    "MinimaHoppingConformerGenerator",
     "ASEConformerGenerator",
     "OpenBabelConformerGenerator",
     "DScribeAnalyzer",

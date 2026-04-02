@@ -6,7 +6,11 @@ import click
 
 from .analyzer import DScribeAnalyzer
 from .config import load_config
-from .conformer_generator import ASEConformerGenerator, OpenBabelConformerGenerator
+from .conformer_generator import (
+    ASEConformerGenerator,
+    MinimaHoppingConformerGenerator,
+    OpenBabelConformerGenerator,
+)
 from .input_handler import InputHandler
 from .optimizer import DFTConformerOptimizer
 from .reporter import Reporter
@@ -29,7 +33,10 @@ class ConformerPipeline:
         self.reporter = Reporter()
 
     def _create_generator(self, gen_type: str) -> BaseConformerGenerator:
-        if gen_type == "ase":
+        if gen_type == "minimahopping":
+            return MinimaHoppingConformerGenerator()
+        elif gen_type == "ase":
+            # Backward compatibility: previous versions used "ase" for Minima Hopping.
             return ASEConformerGenerator()
         elif gen_type == "openbabel":
             return OpenBabelConformerGenerator()
