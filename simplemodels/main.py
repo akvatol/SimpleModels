@@ -1,15 +1,26 @@
-import ase
+"""Core pipeline orchestrator for conformer generation."""
+
+from typing import Any
+
 import click
 
-from simplemodels.processing import process_smiles, process_xyz
+from .analyzer import DScribeAnalyzer
+from .config import load_config
+from .conformer_generator import ASEConformerGenerator, OpenBabelConformerGenerator
+from .input_handler import InputHandler
+from .optimizer import DFTConformerOptimizer
+from .reporter import Reporter
+from .utils import BaseAnalyzer, BaseConformerGenerator, BaseOptimizer
 
 
-# TODO 1
-def validate_input(file_path: str) -> str:
-    """Выбрасывает исклюбие, если файл задан неверно.
+class ConformerPipeline:
+    def __init__(self, config: dict[str, Any]):
+        """Инициализация пайплайна с конфигурацией и инъекцией зависимостей.
 
-    Returns:
-        str: Тип SMILES или папка с xyz
+        :param config: Словарь с параметрами (включая 'generator_type', 'analyzer_type', 'enable_optimization')
+        """
+        self.config = config
+        self.input_handler = InputHandler()
 
     """
     import os
@@ -36,50 +47,75 @@ def validate_input(file_path: str) -> str:
     else:
          raise ValueError(f"Не обнаружено ни подобной директории, ни файлов: {file_path}")
         
+        # Фабрика для легкозаменимых модулей
+        self.generator: BaseConformerGenerator = self._create_generator(config.get("generator_type", "ase"))
+        self.analyzer: BaseAnalyzer = self._create_analyzer(config.get("analyzer_type", "dscribe"))
+        self.optimizer: BaseOptimizer = self._create_optimizer(config.get("optimizer_type", "dft"))
+        self.reporter = Reporter()
 
+    def _create_generator(self, gen_type: str) -> BaseConformerGenerator:
+        if gen_type == "ase":
+            return ASEConformerGenerator()
+        elif gen_type == "openbabel":
+            return OpenBabelConformerGenerator()
+        else:
+            raise ValueError(f"Неизвестный тип генератора: {gen_type}")
 
-# XXX
-def calculate_molecule(molecule: ase.Atoms, output: str, name: str):  # noqa: D103
-    from ase.optimize import BFGS  # noqa: PLC0415
-    from orb_models.forcefield import pretrained  # noqa: PLC0415
-    from orb_models.forcefield.inference.calculator import ORBCalculator  # noqa: PLC0415
+    def _create_analyzer(self, ana_type: str) -> BaseAnalyzer:
+        if ana_type == "dscribe":
+            return DScribeAnalyzer()
+        else:
+            raise ValueError(f"Неизвестный тип анализатора: {ana_type}")
 
-    device = "cpu"  # or device="cuda"
-    orbff, atoms_adapter = pretrained.orb_v3_conservative_inf_omat(
-        device=device,
-        precision="float32-high",  # or "float32-highest" / "float64
-    )
+    def _create_optimizer(self, opt_type: str) -> BaseOptimizer:
+        if opt_type == "dft":
+            return DFTConformerOptimizer()
+        else:
+            raise ValueError(f"Неизвестный тип оптимизатора: {opt_type}")
 
-    calc = ORBCalculator(orbff, atoms_adapter=atoms_adapter, device=device)
-    molecule.calc = calc
+    def run(self, input_data: str) -> str:
+        """Запуск полного пайплайна.
 
-    dyn = BFGS(molecule)
-    dyn.run(fmax=0.01)
-    print("Optimized Energy:", molecule.get_potential_energy())
-    ase.io.write(f"{name}_optimized.xyz", molecule, format="xyz")
+        :param input_data: Входная химическая структура
+        :return: Путь к HTML-отчету
+        """
+        # Этап 1: Ввод и конвертация
+        atoms = self.input_handler.parse_and_convert(input_data, self.config)
+
+        # Этап 2: Генерация конформеров
+        conformer_files = self.generator.generate_and_save(atoms, self.config)
+
+        # Этап 3: Анализ
+        selected_conformers = self.analyzer.cluster_and_select(conformer_files, self.config)
+
+        # Этап 4: Дооптимизация (опционально)
+        if self.config.get("enable_optimization", False):
+            selected_conformers = self.optimizer.optimize_conformers(selected_conformers, self.config)
+
+        # Этап 5: Отчет
+        report_path = self.reporter.generate_html_report(selected_conformers, self.config)
+
+        return report_path
 
 
 @click.command()
-@click.argument("file_path")  # txt file или папка с xyz
-@click.option("--config", default=None)  # конфигурационный файл
-@click.option("--output", default=None)  # папка для выходных файлов
-def main(file_path: str, config: str | None = None, output: str | None = None):  # noqa: D103
-    mol_type = validate_input(file_path)
+@click.argument("input_data")  # SMILES строка или путь к файлу/папке
+@click.option("--config", default=None, help="Путь к конфигурационному файлу")
+@click.option("--output", default=None, help="Папка для выходных файлов")
+def main(input_data: str, config: str | None = None, output: str | None = None):
+    """Главная функция для запуска пайплайна генерации конформеров.
 
-    mol_type = "xyz"
+    :param input_data: Входные данные (SMILES или путь)
+    :param config: Путь к конфигу
+    :param output: Папка для вывода
+    """
+    cfg = load_config(config)
+    if output:
+        cfg["output_dir"] = output
 
-    if mol_type == "SMILES":
-        molecules, names = process_smiles(file_path)  # Наша задача получить список с ase.Atoms
-    elif mol_type == "xyz":
-        molecules, names = process_xyz(file_path)
-
-    # TODO 2
-    if output is None:
-        # Получить путь для выходных данных
-        pass
-
-    for molecule, name in zip(molecules, names):
-        calculate_molecule(molecule, output, name)
+    pipeline = ConformerPipeline(cfg)
+    report_path = pipeline.run(input_data)
+    print(f"Отчет сгенерирован: {report_path}")
 
 
 if __name__ == "__main__":
